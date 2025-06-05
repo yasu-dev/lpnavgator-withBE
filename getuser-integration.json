@@ -1,0 +1,9 @@
+{
+    "ConnectionType": "INTERNET",
+    "IntegrationId": "4g3saoc",
+    "IntegrationMethod": "POST",
+    "IntegrationType": "AWS_PROXY",
+    "IntegrationUri": "arn:aws:apigateway:ap-northeast-1:lambda:path/2015-03-31/functions/arn:aws:lambda:ap-northeast-1:137435348064:function:GetUserFunction-lpnavigator-backend/invocations",
+    "PayloadFormatVersion": "2.0",
+    "TimeoutInMillis": 30000
+}

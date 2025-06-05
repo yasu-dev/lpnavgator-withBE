@@ -1,0 +1,131 @@
+[
+    {
+        "FunctionName": "CreateUserFunction-lpnavigator-backend",
+        "FunctionArn": "arn:aws:lambda:ap-northeast-1:137435348064:function:CreateUserFunction-lpnavigator-backend",
+        "Runtime": "nodejs18.x",
+        "Role": "arn:aws:iam::137435348064:role/LambdaExecRole-lpnavigator-backend",
+        "Handler": "handlers/createUser.handler",
+        "CodeSize": 3402,
+        "Description": "",
+        "Timeout": 3,
+        "MemorySize": 128,
+        "LastModified": "2025-06-04T18:17:30.340+0000",
+        "CodeSha256": "uXL6GL1vEEeMK4DMk6/y98w4oHDdmmH/id+c3c+r384=",
+        "Version": "$LATEST",
+        "Environment": {
+            "Variables": {
+                "USER_TABLE_NAME": "UserTable-lpnavigator-backend",
+                "USER_POOL_CLIENT_ID": "7f5hft1ip7gp9kqdh58bidsc4r",
+                "USER_POOL_ID": "ap-northeast-1_m1LkBYqEc",
+                "REGION": "ap-northeast-1"
+            }
+        },
+        "TracingConfig": {
+            "Mode": "PassThrough"
+        },
+        "RevisionId": "c2fcafd2-36a9-4ef4-aa67-9d1f23732186",
+        "PackageType": "Zip"
+    },
+    {
+        "FunctionName": "GetUserFunction-lpnavigator-backend-v3",
+        "FunctionArn": "arn:aws:lambda:ap-northeast-1:137435348064:function:GetUserFunction-lpnavigator-backend-v3",
+        "Runtime": "nodejs18.x",
+        "Role": "arn:aws:iam::137435348064:role/lpnavigator-backend-v3-GetUserFunctionRole-NkrRL4o2580q",
+        "Handler": "src/handlers/getUser.handler",
+        "CodeSize": 85804117,
+        "Description": "",
+        "Timeout": 10,
+        "MemorySize": 512,
+        "LastModified": "2025-06-05T00:53:54.930+0000",
+        "CodeSha256": "2MmIpvi6c60jxVFnVZ9Ahxlt8Ub/uo2q62xVUpVk/8E=",
+        "Version": "$LATEST",
+        "Environment": {
+            "Variables": {
+                "USER_TABLE_NAME": "UserTable-lpnavigator-backend-v3",
+                "USER_POOL_ID": "ap-northeast-1_oH53sFvDv",
+                "REGION": "ap-northeast-1"
+            }
+        },
+        "TracingConfig": {
+            "Mode": "PassThrough"
+        },
+        "RevisionId": "b28946dd-226d-4c8c-8c99-40a90c93ca55",
+        "PackageType": "Zip"
+    },
+    {
+        "FunctionName": "CreateUserFunction-lpnavigator-backend-v3",
+        "FunctionArn": "arn:aws:lambda:ap-northeast-1:137435348064:function:CreateUserFunction-lpnavigator-backend-v3",
+        "Runtime": "nodejs18.x",
+        "Role": "arn:aws:iam::137435348064:role/lpnavigator-backend-v3-CreateUserFunctionRole-xY0t8vp6OaLn",
+        "Handler": "src/handlers/createUser.handler",
+        "CodeSize": 85804117,
+        "Description": "",
+        "Timeout": 10,
+        "MemorySize": 512,
+        "LastModified": "2025-06-05T00:53:55.453+0000",
+        "CodeSha256": "2MmIpvi6c60jxVFnVZ9Ahxlt8Ub/uo2q62xVUpVk/8E=",
+        "Version": "$LATEST",
+        "Environment": {
+            "Variables": {
+                "USER_TABLE_NAME": "UserTable-lpnavigator-backend-v3",
+                "USER_POOL_CLIENT_ID": "5nb3tqr0d5svov99n4vtc3haic",
+                "USER_POOL_ID": "ap-northeast-1_oH53sFvDv",
+                "REGION": "ap-northeast-1"
+            }
+        },
+        "TracingConfig": {
+            "Mode": "PassThrough"
+        },
+        "RevisionId": "80984434-1f23-4568-95ea-c01b12dd65a5",
+        "PackageType": "Zip"
+    },
+    {
+        "FunctionName": "LoginFunction-lpnavigator-backend",
+        "FunctionArn": "arn:aws:lambda:ap-northeast-1:137435348064:function:LoginFunction-lpnavigator-backend",
+        "Runtime": "nodejs18.x",
+        "Role": "arn:aws:iam::137435348064:role/LambdaExecRole-lpnavigator-backend",
+        "Handler": "handlers/login.handler",
+        "CodeSize": 3402,
+        "Description": "",
+        "Timeout": 3,
+        "MemorySize": 128,
+        "LastModified": "2025-06-04T18:19:42.633+0000",
+        "CodeSha256": "uXL6GL1vEEeMK4DMk6/y98w4oHDdmmH/id+c3c+r384=",
+        "Version": "$LATEST",
+        "Environment": {
+            "Variables": {
+                "USER_POOL_CLIENT_ID": "7f5hft1ip7gp9kqdh58bidsc4r"
+            }
+        },
+        "TracingConfig": {
+            "Mode": "PassThrough"
+        },
+        "RevisionId": "298812f5-c83d-48c9-8224-07b8f371cfe6",
+        "PackageType": "Zip"
+    },
+    {
+        "FunctionName": "LoginFunction-lpnavigator-backend-v3",
+        "FunctionArn": "arn:aws:lambda:ap-northeast-1:137435348064:function:LoginFunction-lpnavigator-backend-v3",
+        "Runtime": "nodejs18.x",
+        "Role": "arn:aws:iam::137435348064:role/lpnavigator-backend-v3-LoginFunctionRole-WPoYfh85AENM",
+        "Handler": "src/handlers/login.handler",
+        "CodeSize": 85804117,
+        "Description": "",
+        "Timeout": 10,
+        "MemorySize": 512,
+        "LastModified": "2025-06-05T00:53:45.016+0000",
+        "CodeSha256": "2MmIpvi6c60jxVFnVZ9Ahxlt8Ub/uo2q62xVUpVk/8E=",
+        "Version": "$LATEST",
+        "Environment": {
+            "Variables": {
+                "USER_POOL_CLIENT_ID": "5nb3tqr0d5svov99n4vtc3haic",
+                "REGION": "ap-northeast-1"
+            }
+        },
+        "TracingConfig": {
+            "Mode": "PassThrough"
+        },
+        "RevisionId": "25fb72a2-61c5-4089-bf12-d97f468468fa",
+        "PackageType": "Zip"
+    }
+]

@@ -1,0 +1,252 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Simple Serverless Backend
+
+Resources:
+  # DynamoDB Table
+  UserTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub UserTable-${AWS::StackName}
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+
+  # Cognito User Pool
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub MyAppUserPool-${AWS::StackName}
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      PasswordPolicy:
+        MinimumLength: 8
+        RequireLowercase: true
+        RequireUppercase: true
+        RequireNumbers: true
+        RequireSymbols: false
+
+  # Cognito User Pool Client
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub MyAppClient-${AWS::StackName}
+      UserPoolId: !Ref CognitoUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+
+  # Lambda Execution Role
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:Query
+                Resource: !GetAtt UserTable.Arn
+        - PolicyName: CognitoAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cognito-idp:*
+                Resource: !GetAtt CognitoUserPool.Arn
+
+  # Lambda Functions
+  CreateUserFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub CreateUserFunction-${AWS::StackName}
+      Runtime: nodejs18.x
+      Handler: src/handlers/createUser.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: lpnavigator-lambda-deploy-137435348064
+        S3Key: lambda-functions.zip
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref CognitoUserPool
+          USER_POOL_CLIENT_ID: !Ref CognitoUserPoolClient
+          USER_TABLE_NAME: !Ref UserTable
+          REGION: !Ref AWS::Region
+
+  LoginFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub LoginFunction-${AWS::StackName}
+      Runtime: nodejs18.x
+      Handler: src/handlers/login.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: lpnavigator-lambda-deploy-137435348064
+        S3Key: lambda-functions.zip
+      Environment:
+        Variables:
+          USER_POOL_CLIENT_ID: !Ref CognitoUserPoolClient
+          REGION: !Ref AWS::Region
+
+  GetUserFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub GetUserFunction-${AWS::StackName}
+      Runtime: nodejs18.x
+      Handler: src/handlers/getUser.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: lpnavigator-lambda-deploy-137435348064
+        S3Key: lambda-functions.zip
+      Environment:
+        Variables:
+          USER_TABLE_NAME: !Ref UserTable
+          USER_POOL_ID: !Ref CognitoUserPool
+          REGION: !Ref AWS::Region
+
+  # API Gateway
+  HttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub ServerlessBackendApi-${AWS::StackName}
+      ProtocolType: HTTP
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - "*"
+
+  # Lambda Integrations
+  CreateUserIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CreateUserFunction.Arn}/invocations
+      PayloadFormatVersion: '2.0'
+
+  LoginIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LoginFunction.Arn}/invocations
+      PayloadFormatVersion: '2.0'
+
+  GetUserIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetUserFunction.Arn}/invocations
+      PayloadFormatVersion: '2.0'
+
+  # Routes
+  CreateUserRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'POST /v1/users/signup'
+      Target: !Sub integrations/${CreateUserIntegration}
+
+  LoginRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'POST /v1/users/login'
+      Target: !Sub integrations/${LoginIntegration}
+
+  GetUserRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'GET /v1/users/{userId}'
+      Target: !Sub integrations/${GetUserIntegration}
+
+  # Stage
+  ApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref HttpApi
+      StageName: '$default'
+      AutoDeploy: true
+
+  # Lambda Permissions
+  CreateUserPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CreateUserFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*/*
+
+  LoginPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref LoginFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*/*
+
+  GetUserPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetUserFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*/*
+
+Outputs:
+  HttpApiUrl:
+    Description: "HTTP API Endpoint URL"
+    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+    Export:
+      Name: !Sub "${AWS::StackName}-HttpApiUrl"
+
+  CognitoUserPoolId:
+    Description: "Cognito User Pool ID"
+    Value: !Ref CognitoUserPool
+    Export:
+      Name: !Sub "${AWS::StackName}-CognitoUserPoolId"
+
+  CognitoUserPoolClientId:
+    Description: "Cognito User Pool Client ID"
+    Value: !Ref CognitoUserPoolClient
+    Export:
+      Name: !Sub "${AWS::StackName}-CognitoUserPoolClientId"
+
+  UserTableName:
+    Description: "DynamoDB User Table Name"
+    Value: !Ref UserTable
+    Export:
+      Name: !Sub "${AWS::StackName}-UserTableName" 

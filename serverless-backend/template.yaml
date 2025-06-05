@@ -1,0 +1,312 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Serverless Backend for Mock Frontend
+  - Cognito User Pool を使った認証
+  - DynamoDB を使ったデータストレージ
+  - API Gateway (HTTP API) + Lambda でビジネスロジック
+  - 最小権限の IAM ポリシー付与
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 10         # 各 Lambda のタイムアウトを 10 秒に設定
+    MemorySize: 512     # メモリ 512 MB
+    Runtime: nodejs18.x # ランタイムは Node.js 18.x
+    Environment:
+      Variables:
+        USER_TABLE_NAME: !Ref UserTable
+        REGION: !Ref AWS::Region
+
+Resources:
+
+  ######################################
+  # 1. DynamoDB テーブル定義
+  ######################################
+  UserTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub UserTable-${AWS::StackName}   # 実際のテーブル名例：UserTable-serverless-backend
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST   # オンデマンド課金モード
+      SSESpecification:
+        SSEEnabled: true             # サーバー側暗号化有効（SSE-KMS）
+    DeletionPolicy: Delete          # スタック削除時にテーブルを削除
+
+  ######################################
+  # 2. Cognito User Pool 定義
+  ######################################
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub MyAppUserPool-${AWS::StackName}
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      PasswordPolicy:
+        MinimumLength: 8
+        RequireLowercase: true
+        RequireUppercase: true
+        RequireNumbers: true
+        RequireSymbols: false
+      Schema:
+        - AttributeDataType: String
+          Name: email
+          Required: true
+          Mutable: true
+      MfaConfiguration: OFF
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+
+  ######################################
+  # 3. Cognito User Pool Client (アプリケーションクライアント) 定義
+  ######################################
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub MyAppClient-${AWS::StackName}
+      UserPoolId: !Ref CognitoUserPool
+      GenerateSecret: false        # シークレット不要（フロントエンド用）
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+      SupportedIdentityProviders:
+        - COGNITO
+
+  ######################################
+  # 4. Lambda 用 IAM ロール（最小権限）定義
+  ######################################
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub LambdaExecRole-${AWS::StackName}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        # 4.1 CloudWatch Logs 出力用
+        - PolicyName: !Sub LambdaBasicExecution-${AWS::StackName}
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+
+        # 4.2 DynamoDB へのアクセス（最小権限：UserTable への読み書きのみ許可）
+        - PolicyName: !Sub DynamoDBAccess-${AWS::StackName}
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:Query
+                Resource:
+                  - !GetAtt UserTable.Arn
+                  - !Sub "${UserTable.Arn}/index/*"
+
+        # 4.3 Cognito へのアクセス
+        - PolicyName: !Sub CognitoAccess-${AWS::StackName}
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cognito-idp:*
+                Resource: !GetAtt CognitoUserPool.Arn
+
+  ######################################
+  # 5. Lambda 関数定義
+  ######################################
+  # 5.1 新規ユーザー作成用 (Cognito SignUp + DynamoDB 登録)
+  CreateUserFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub CreateUserFunction-${AWS::StackName}
+      Runtime: nodejs18.x
+      Handler: src/handlers/createUser.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: lpnavigator-lambda-deploy-137435348064
+        S3Key: lambda-functions.zip
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref CognitoUserPool
+          USER_POOL_CLIENT_ID: !Ref CognitoUserPoolClient
+          USER_TABLE_NAME: !Ref UserTable
+          REGION: !Ref AWS::Region
+
+  # 5.2 ログイン用 (Cognito Auth + トークン発行)
+  LoginFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub LoginFunction-${AWS::StackName}
+      Runtime: nodejs18.x
+      Handler: src/handlers/login.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: lpnavigator-lambda-deploy-137435348064
+        S3Key: lambda-functions.zip
+      Environment:
+        Variables:
+          USER_POOL_CLIENT_ID: !Ref CognitoUserPoolClient
+          REGION: !Ref AWS::Region
+
+  # 5.3 認証が必要なユーザー情報取得用 (Cognito トークン検証 + DynamoDB 取得)
+  GetUserFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub GetUserFunction-${AWS::StackName}
+      Runtime: nodejs18.x
+      Handler: src/handlers/getUser.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: lpnavigator-lambda-deploy-137435348064
+        S3Key: lambda-functions.zip
+      Environment:
+        Variables:
+          USER_TABLE_NAME: !Ref UserTable
+          USER_POOL_ID: !Ref CognitoUserPool
+          REGION: !Ref AWS::Region
+
+  ######################################
+  # 6. HTTP API (API Gateway) 定義
+  ######################################
+  HttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub ServerlessBackendApi-${AWS::StackName}
+      ProtocolType: HTTP
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - "*"
+        AllowCredentials: false
+
+  # API Gateway Lambda 統合
+  CreateUserIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CreateUserFunction.Arn}/invocations
+      PayloadFormatVersion: '2.0'
+
+  LoginIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LoginFunction.Arn}/invocations
+      PayloadFormatVersion: '2.0'
+
+  GetUserIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetUserFunction.Arn}/invocations
+      PayloadFormatVersion: '2.0'
+
+  # API Gateway ルート
+  CreateUserRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'POST /v1/users/signup'
+      Target: !Sub integrations/${CreateUserIntegration}
+
+  LoginRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'POST /v1/users/login'
+      Target: !Sub integrations/${LoginIntegration}
+
+  GetUserRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'GET /v1/users/{userId}'
+      Target: !Sub integrations/${GetUserIntegration}
+
+  # API Gateway ステージ
+  ApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref HttpApi
+      StageName: '$default'
+      AutoDeploy: true
+
+  # Lambda 権限
+  CreateUserPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CreateUserFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*/*
+
+  LoginPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref LoginFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*/*
+
+  GetUserPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetUserFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*/*
+
+Outputs:
+  HttpApiUrl:
+    Description: "HTTP API のエンドポイント URL"
+    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+
+  CognitoUserPoolId:
+    Description: "Cognito User Pool ID"
+    Value: !Ref CognitoUserPool
+
+  CognitoUserPoolClientId:
+    Description: "Cognito User Pool Client ID"
+    Value: !Ref CognitoUserPoolClient
+
+  UserTableName:
+    Description: "DynamoDB User Table Name"
+    Value: !Ref UserTable 

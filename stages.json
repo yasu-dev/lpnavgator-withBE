@@ -1,0 +1,18 @@
+{
+    "Items": [
+        {
+            "AutoDeploy": true,
+            "CreatedDate": "2025-06-04T18:18:38+00:00",
+            "DefaultRouteSettings": {
+                "DetailedMetricsEnabled": false
+            },
+            "DeploymentId": "e0cdo7",
+            "LastDeploymentStatusMessage": "Successfully deployed stage with deployment ID 'e0cdo7'",
+            "LastUpdatedDate": "2025-06-04T18:20:56+00:00",
+            "RouteSettings": {},
+            "StageName": "prod",
+            "StageVariables": {},
+            "Tags": {}
+        }
+    ]
+}

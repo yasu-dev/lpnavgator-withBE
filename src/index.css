@@ -1,0 +1,496 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Viteのデバッグ情報を非表示 */
+.fixed.bottom-0.right-0.bg-black.bg-opacity-80.text-white.p-2.text-xs.z-50 {
+  display: none !important;
+}
+
+:root {
+  /* Color palette */
+  --color-primary-50: #e6f0ff;
+  --color-primary-100: #cce0ff;
+  --color-primary-200: #99c1ff;
+  --color-primary-300: #66a3ff;
+  --color-primary-400: #3384ff;
+  --color-primary-500: #0062ff;
+  --color-primary-600: #004ecc;
+  --color-primary-700: #003a99;
+  --color-primary-800: #002766;
+  --color-primary-900: #001333;
+
+  --color-secondary-50: #e6fbfa;
+  --color-secondary-100: #ccf7f5;
+  --color-secondary-200: #99efeb;
+  --color-secondary-300: #66e6e0;
+  --color-secondary-400: #33ded6;
+  --color-secondary-500: #00b8a9;
+  --color-secondary-600: #009387;
+  --color-secondary-700: #006e65;
+  --color-secondary-800: #004a43;
+  --color-secondary-900: #002522;
+
+  --color-accent-50: #fff4e6;
+  --color-accent-100: #ffe9cc;
+  --color-accent-200: #ffd399;
+  --color-accent-300: #ffbd66;
+  --color-accent-400: #ffa733;
+  --color-accent-500: #ff7a00;
+  --color-accent-600: #cc6200;
+  --color-accent-700: #994900;
+  --color-accent-800: #663100;
+  --color-accent-900: #331800;
+
+  --color-success-500: #10b981;
+  --color-warning-500: #f59e0b;
+  --color-error-500: #ef4444;
+
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+
+  /* Font settings */
+  font-family: 'Noto Sans JP', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
+  line-height: 1.5;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--color-gray-50);
+  color: var(--color-gray-800);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  line-height: 1.2;
+  margin: 0;
+  font-weight: 700;
+}
+
+h1 {
+  font-size: 2rem;
+}
+
+h2 {
+  font-size: 1.5rem;
+}
+
+h3 {
+  font-size: 1.25rem;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* Animation classes */
+.fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+.slide-in {
+  animation: slideIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Utility classes */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+@media (min-width: 640px) {
+  .container {
+    padding: 0 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    padding: 0 2rem;
+  }
+}
+
+/* Custom LP related styles */
+.cta-box {
+  background-color: var(--color-primary-50);
+  border: 1px solid var(--color-primary-200);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  text-align: center;
+}
+
+.cta-button {
+  background-color: var(--color-primary-600);
+  color: white;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.375rem;
+  border: none;
+  margin-top: 1rem;
+  transition: background-color 0.2s;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.cta-button:hover {
+  background-color: var(--color-primary-700);
+}
+
+/* Prose styles for generated content */
+.prose {
+  max-width: 65ch;
+  color: var(--color-gray-800);
+}
+
+.prose h1 {
+  color: var(--color-primary-700);
+  margin-bottom: 1rem;
+  font-size: 1.875rem;
+}
+
+.prose h2 {
+  color: var(--color-primary-600);
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 1.5rem;
+}
+
+.prose h3 {
+  color: var(--color-gray-800);
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.prose p {
+  margin-bottom: 1rem;
+}
+
+.prose ul {
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+  list-style-type: disc;
+}
+
+.prose li {
+  margin-bottom: 0.25rem;
+}
+
+.prose blockquote {
+  border-left: 4px solid var(--color-primary-300);
+  padding-left: 1rem;
+  margin: 1.5rem 0;
+  font-style: italic;
+  color: var(--color-gray-600);
+}
+
+.prose blockquote cite {
+  display: block;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  font-style: normal;
+  font-weight: 500;
+}
+
+/* カスタムボタンスタイル */
+.btn-icon-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 進捗表示の改善 */
+.progress-indicator {
+  transition: width 0.6s ease-in-out;
+}
+
+/* 成功メッセージアニメーション */
+.success-animation {
+  animation: success-pulse 1.5s ease-in-out;
+}
+
+@keyframes success-pulse {
+  0% { opacity: 0; transform: translateY(-10px); }
+  50% { opacity: 1; transform: translateY(0); }
+  90% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ボタンホバーエフェクト強化 */
+button:not(:disabled):hover {
+  transform: translateY(-1px);
+  transition: transform 0.2s ease;
+}
+
+button:not(:disabled):active {
+  transform: translateY(0);
+}
+
+/* 重要なボタンのスタイル */
+.important-button {
+  z-index: 100;
+  position: relative;
+}
+
+/* フッターエリア用スタイル */
+.sticky-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 50;
+  background-color: white;
+  padding: 1rem;
+  border-top: 1px solid #e5e7eb;
+  margin-top: auto;
+  width: 100%;
+}
+
+/* ナビゲーションボタンが必ず表示されるようにする */
+.nav-buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 1rem 0;
+}
+
+/* 次へボタン特有のスタイル */
+.next-button {
+  min-width: 6rem;
+  min-height: 2.5rem;
+  font-weight: bold;
+  box-shadow: 0 4px 6px -1px rgba(0, 98, 255, 0.1), 0 2px 4px -1px rgba(0, 98, 255, 0.06);
+}
+
+/* アイコンのスタイル */
+.next-button svg {
+  stroke: #4b5563 !important; /* グレー600の色に変更 - 少し薄く */
+  stroke-width: 2px !important;
+}
+
+/* 無効時のボタンスタイル */
+button:disabled svg {
+  stroke: #9ca3af !important; /* グレー400 - 無効時は薄く */
+}
+
+/* 前へ/次へボタンのアイコン */
+button svg {
+  stroke: currentColor;
+  stroke-width: 2px;
+  display: inline-block !important;
+  visibility: visible !important;
+}
+
+/* 進捗バーアニメーション */
+@keyframes progress {
+  0% { width: 0%; }
+  50% { width: 70%; }
+  100% { width: 100%; }
+}
+
+.animate-progress {
+  animation: progress 3s ease-in-out infinite;
+}
+
+/* グラデーションアニメーション */
+@keyframes gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-gradient {
+  background: linear-gradient(45deg, var(--color-primary-500), var(--color-primary-700), var(--color-secondary-500), var(--color-primary-500));
+  background-size: 200% 200%;
+  animation: gradient 5s ease infinite;
+}
+
+/* 回転アニメーション */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 軌道アニメーション */
+@keyframes orbitSpin {
+  0% { transform: rotate(0deg) translateY(-35px); opacity: 0; }
+  50% { opacity: 1; }
+  100% { transform: rotate(360deg) translateY(-35px); opacity: 0; }
+}
+
+/* 拡張版軌道アニメーション - よりスムーズで3D効果あり */
+@keyframes orbitSpin3D {
+  0% { 
+    transform: rotate(0deg) translateY(-35px) scale(0.8); 
+    opacity: 0.2;
+    box-shadow: 0 0 2px rgba(96, 165, 250, 0.3);
+  }
+  25% { 
+    transform: rotate(90deg) translateY(-35px) scale(1.1); 
+    opacity: 1;
+    box-shadow: 0 0 12px rgba(96, 165, 250, 0.8);
+  }
+  50% { 
+    transform: rotate(180deg) translateY(-35px) scale(0.9); 
+    opacity: 0.8;
+    box-shadow: 0 0 8px rgba(96, 165, 250, 0.6);
+  }
+  75% { 
+    transform: rotate(270deg) translateY(-35px) scale(1.2); 
+    opacity: 1;
+    box-shadow: 0 0 15px rgba(96, 165, 250, 0.9);
+  }
+  100% { 
+    transform: rotate(360deg) translateY(-35px) scale(0.8); 
+    opacity: 0.2;
+    box-shadow: 0 0 2px rgba(96, 165, 250, 0.3);
+  }
+}
+
+/* グローエフェクト */
+@keyframes glow {
+  0% { filter: drop-shadow(0 0 2px rgba(96, 165, 250, 0.7)); opacity: 0.7; }
+  50% { filter: drop-shadow(0 0 15px rgba(96, 165, 250, 1)); opacity: 1; }
+  100% { filter: drop-shadow(0 0 2px rgba(96, 165, 250, 0.7)); opacity: 0.7; }
+}
+
+/* スクロールアップアニメーション */
+.scroll-up {
+  animation: scrollUp 6s linear infinite;
+}
+
+@keyframes scrollUp {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-120px); }
+}
+
+/* 拡張版スクロールアップ - タイピング効果とフェードイン */
+.terminal-scroll {
+  animation: terminalScroll 8s linear infinite;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+@keyframes terminalScroll {
+  0% { transform: translateY(0); opacity: 0; }
+  10% { transform: translateY(0); opacity: 1; }
+  25% { transform: translateY(-24px); opacity: 1; }
+  40% { transform: translateY(-48px); opacity: 1; }
+  55% { transform: translateY(-72px); opacity: 1; }
+  70% { transform: translateY(-96px); opacity: 1; }
+  85% { transform: translateY(-120px); opacity: 1; }
+  100% { transform: translateY(-144px); opacity: 0; }
+}
+
+.typing-effect {
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 2px solid var(--color-primary-400);
+  animation: typing 3.5s steps(40, end), blink-caret 0.75s step-end infinite;
+}
+
+@keyframes typing {
+  from { width: 0 }
+  to { width: 100% }
+}
+
+@keyframes blink-caret {
+  from, to { border-color: transparent }
+  50% { border-color: var(--color-primary-400) }
+}
+
+/* AIアイコンのパルスとフロートアニメーション */
+.ai-icon-float {
+  animation: float 3s ease-in-out infinite, glow 2s ease-in-out infinite;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+/* 生成処理のホログラム効果 */
+.hologram-effect {
+  position: relative;
+  overflow: hidden;
+}
+
+.hologram-effect::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(96, 165, 250, 0.1),
+    rgba(96, 165, 250, 0.2),
+    rgba(96, 165, 250, 0.1),
+    transparent
+  );
+  transform: rotate(30deg);
+  animation: hologramScan 3s linear infinite;
+}
+
+@keyframes hologramScan {
+  0% { transform: translateX(-100%) rotate(30deg); }
+  100% { transform: translateX(100%) rotate(30deg); }
+}
+
+/* プログレスバーのフラッシュ効果 */
+.progress-bar-flash {
+  background-position: left top;
+  background-size: 30px 30px;
+  background-image: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.2) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0.2) 75%,
+    transparent 75%,
+    transparent
+  );
+  animation: progressBarStripes 1s linear infinite;
+}
+
+@keyframes progressBarStripes {
+  from { background-position: 30px 0; }
+  to { background-position: 0 0; }
+}

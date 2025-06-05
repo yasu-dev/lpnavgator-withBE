@@ -1,0 +1,452 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Complete Serverless Backend with Lambda and API Gateway
+
+Resources:
+  # DynamoDB Table
+  UserTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub UserTable-${AWS::StackName}
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+
+  # Cognito User Pool
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub MyAppUserPool-${AWS::StackName}
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      PasswordPolicy:
+        MinimumLength: 8
+        RequireLowercase: true
+        RequireUppercase: true
+        RequireNumbers: true
+        RequireSymbols: false
+
+  # Cognito User Pool Client
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub MyAppClient-${AWS::StackName}
+      UserPoolId: !Ref CognitoUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+
+  # Lambda Execution Role
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource: !GetAtt UserTable.Arn
+        - PolicyName: CognitoAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cognito-idp:*
+                Resource: !GetAtt CognitoUserPool.Arn
+
+  # Lambda Functions
+  CreateUserFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub CreateUserFunction-${AWS::StackName}
+      Runtime: nodejs18.x
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          const AWS = require('aws-sdk');
+          const crypto = require('crypto');
+          
+          const USER_POOL_ID = process.env.USER_POOL_ID;
+          const USER_POOL_CLIENT_ID = process.env.USER_POOL_CLIENT_ID;
+          const USER_TABLE_NAME = process.env.USER_TABLE_NAME;
+          const cognito = new AWS.CognitoIdentityServiceProvider();
+          const dynamodb = new AWS.DynamoDB.DocumentClient();
+          
+          // Simple UUID v4 generator
+          function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+              const r = Math.random() * 16 | 0;
+              const v = c == 'x' ? r : (r & 0x3 | 0x8);
+              return v.toString(16);
+            });
+          }
+          
+          exports.handler = async (event) => {
+            try {
+              const body = JSON.parse(event.body);
+              const { email, password, name } = body;
+              
+              if (!email || !password || !name) {
+                return {
+                  statusCode: 400,
+                  headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Headers': '*',
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({ message: 'email, password, name are required' })
+                };
+              }
+              
+              // Cognito SignUp
+              await cognito.signUp({
+                ClientId: USER_POOL_CLIENT_ID,
+                Username: email,
+                Password: password,
+                UserAttributes: [
+                  { Name: 'email', Value: email },
+                  { Name: 'name', Value: name }
+                ]
+              }).promise();
+              
+              // DynamoDB registration
+              const userId = generateUUID();
+              await dynamodb.put({
+                TableName: USER_TABLE_NAME,
+                Item: {
+                  pk: `USER#${userId}`,
+                  sk: `PROFILE`,
+                  userId: userId,
+                  email: email,
+                  name: name,
+                  createdAt: new Date().toISOString()
+                }
+              }).promise();
+              
+              return {
+                statusCode: 201,
+                headers: {
+                  'Access-Control-Allow-Origin': '*',
+                  'Access-Control-Allow-Headers': '*',
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                  message: 'User created successfully',
+                  userId: userId
+                })
+              };
+            } catch (error) {
+              console.error('Error:', error);
+              return {
+                statusCode: 500,
+                headers: {
+                  'Access-Control-Allow-Origin': '*',
+                  'Access-Control-Allow-Headers': '*',
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message: 'Internal server error' })
+              };
+            }
+          };
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref CognitoUserPool
+          USER_POOL_CLIENT_ID: !Ref CognitoUserPoolClient
+          USER_TABLE_NAME: !Ref UserTable
+          REGION: !Ref AWS::Region
+
+  LoginFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub LoginFunction-${AWS::StackName}
+      Runtime: nodejs18.x
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          const AWS = require('aws-sdk');
+          const USER_POOL_CLIENT_ID = process.env.USER_POOL_CLIENT_ID;
+          const cognito = new AWS.CognitoIdentityServiceProvider();
+          
+          exports.handler = async (event) => {
+            try {
+              const body = JSON.parse(event.body);
+              const { email, password } = body;
+              
+              if (!email || !password) {
+                return {
+                  statusCode: 400,
+                  headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Headers': '*',
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({ message: 'email and password are required' })
+                };
+              }
+              
+              const authResult = await cognito.initiateAuth({
+                AuthFlow: 'USER_PASSWORD_AUTH',
+                ClientId: USER_POOL_CLIENT_ID,
+                AuthParameters: {
+                  USERNAME: email,
+                  PASSWORD: password
+                }
+              }).promise();
+              
+              return {
+                statusCode: 200,
+                headers: {
+                  'Access-Control-Allow-Origin': '*',
+                  'Access-Control-Allow-Headers': '*',
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  idToken: authResult.AuthenticationResult.IdToken,
+                  accessToken: authResult.AuthenticationResult.AccessToken,
+                  refreshToken: authResult.AuthenticationResult.RefreshToken
+                })
+              };
+            } catch (error) {
+              console.error('Error:', error);
+              return {
+                statusCode: 401,
+                headers: {
+                  'Access-Control-Allow-Origin': '*',
+                  'Access-Control-Allow-Headers': '*',
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message: 'Authentication failed' })
+              };
+            }
+          };
+      Environment:
+        Variables:
+          USER_POOL_CLIENT_ID: !Ref CognitoUserPoolClient
+          REGION: !Ref AWS::Region
+
+  GetUserFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub GetUserFunction-${AWS::StackName}
+      Runtime: nodejs18.x
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          const AWS = require('aws-sdk');
+          const USER_TABLE_NAME = process.env.USER_TABLE_NAME;
+          const dynamodb = new AWS.DynamoDB.DocumentClient();
+          
+          exports.handler = async (event) => {
+            try {
+              const userId = event.pathParameters.userId;
+              
+              if (!userId) {
+                return {
+                  statusCode: 400,
+                  headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Headers': '*',
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({ message: 'userId is required' })
+                };
+              }
+              
+              const result = await dynamodb.get({
+                TableName: USER_TABLE_NAME,
+                Key: {
+                  pk: `USER#${userId}`,
+                  sk: 'PROFILE'
+                }
+              }).promise();
+              
+              if (!result.Item) {
+                return {
+                  statusCode: 404,
+                  headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Headers': '*',
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({ message: 'User not found' })
+                };
+              }
+              
+              return {
+                statusCode: 200,
+                headers: {
+                  'Access-Control-Allow-Origin': '*',
+                  'Access-Control-Allow-Headers': '*',
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(result.Item)
+              };
+            } catch (error) {
+              console.error('Error:', error);
+              return {
+                statusCode: 500,
+                headers: {
+                  'Access-Control-Allow-Origin': '*',
+                  'Access-Control-Allow-Headers': '*',
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message: 'Internal server error' })
+              };
+            }
+          };
+      Environment:
+        Variables:
+          USER_TABLE_NAME: !Ref UserTable
+          REGION: !Ref AWS::Region
+
+  # API Gateway
+  HttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub ServerlessBackendApi-${AWS::StackName}
+      ProtocolType: HTTP
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - "*"
+
+  # Lambda Integrations
+  CreateUserIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CreateUserFunction.Arn}/invocations
+      PayloadFormatVersion: '2.0'
+
+  LoginIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LoginFunction.Arn}/invocations
+      PayloadFormatVersion: '2.0'
+
+  GetUserIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetUserFunction.Arn}/invocations
+      PayloadFormatVersion: '2.0'
+
+  # Routes
+  CreateUserRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'POST /v1/users/signup'
+      Target: !Sub integrations/${CreateUserIntegration}
+
+  LoginRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'POST /v1/users/login'
+      Target: !Sub integrations/${LoginIntegration}
+
+  GetUserRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'GET /v1/users/{userId}'
+      Target: !Sub integrations/${GetUserIntegration}
+
+  # Stage
+  ApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref HttpApi
+      StageName: '$default'
+      AutoDeploy: true
+
+  # Lambda Permissions
+  CreateUserPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CreateUserFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*/*
+
+  LoginPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref LoginFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*/*
+
+  GetUserPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GetUserFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*/*
+
+Outputs:
+  HttpApiUrl:
+    Description: "HTTP API Endpoint URL"
+    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+    Export:
+      Name: !Sub "${AWS::StackName}-HttpApiUrl"
+
+  CognitoUserPoolId:
+    Description: "Cognito User Pool ID"
+    Value: !Ref CognitoUserPool
+    Export:
+      Name: !Sub "${AWS::StackName}-CognitoUserPoolId"
+
+  CognitoUserPoolClientId:
+    Description: "Cognito User Pool Client ID"
+    Value: !Ref CognitoUserPoolClient
+    Export:
+      Name: !Sub "${AWS::StackName}-CognitoUserPoolClientId"
+
+  UserTableName:
+    Description: "DynamoDB User Table Name"
+    Value: !Ref UserTable
+    Export:
+      Name: !Sub "${AWS::StackName}-UserTableName" 

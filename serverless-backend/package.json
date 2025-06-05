@@ -1,0 +1,13 @@
+﻿{
+    "main":  "index.js",
+    "description":  "Serverless backend for mock frontend",
+    "name":  "serverless-backend",
+    "version":  "1.0.0",
+    "dependencies":  {
+                         "uuid":  "^9.0.0",
+                         "jsonwebtoken":  "^9.0.0",
+                         "jwk-to-pem":  "^2.0.5",
+                         "aws-sdk":  "^2.1350.0",
+                         "node-fetch":  "^2.6.7"
+                     }
+}

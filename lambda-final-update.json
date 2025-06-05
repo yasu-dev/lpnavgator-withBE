@@ -1,0 +1,29 @@
+{
+    "FunctionName": "LoginFunction-lpnavigator-backend-v3",
+    "FunctionArn": "arn:aws:lambda:ap-northeast-1:137435348064:function:LoginFunction-lpnavigator-backend-v3",
+    "Runtime": "nodejs18.x",
+    "Role": "arn:aws:iam::137435348064:role/lpnavigator-backend-v3-LoginFunctionRole-WPoYfh85AENM",
+    "Handler": "login.handler",
+    "CodeSize": 14223377,
+    "Description": "",
+    "Timeout": 10,
+    "MemorySize": 512,
+    "LastModified": "2025-06-05T02:12:41.000+0000",
+    "CodeSha256": "oGMlUUMs4pMXVe03NSBaj9azca3Jadn4pqx3QIaBRYU=",
+    "Version": "$LATEST",
+    "Environment": {
+        "Variables": {
+            "USER_POOL_CLIENT_ID": "5nb3tqr0d5svov99n4vtc3haic",
+            "REGION": "ap-northeast-1"
+        }
+    },
+    "TracingConfig": {
+        "Mode": "PassThrough"
+    },
+    "RevisionId": "f429be4b-8a89-43eb-936d-c445dc344716",
+    "State": "Active",
+    "LastUpdateStatus": "InProgress",
+    "LastUpdateStatusReason": "The function is being created.",
+    "LastUpdateStatusReasonCode": "Creating",
+    "PackageType": "Zip"
+}

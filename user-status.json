@@ -1,0 +1,25 @@
+{
+    "Username": "57849ad8-f0c1-704e-f0d5-6a73a55cba37",
+    "UserAttributes": [
+        {
+            "Name": "email",
+            "Value": "test-fixed-v2@example.com"
+        },
+        {
+            "Name": "email_verified",
+            "Value": "false"
+        },
+        {
+            "Name": "name",
+            "Value": "Test Fixed User V2"
+        },
+        {
+            "Name": "sub",
+            "Value": "57849ad8-f0c1-704e-f0d5-6a73a55cba37"
+        }
+    ],
+    "UserCreateDate": "2025-06-05T10:20:03.210000+09:00",
+    "UserLastModifiedDate": "2025-06-05T10:23:58.869000+09:00",
+    "Enabled": true,
+    "UserStatus": "CONFIRMED"
+}

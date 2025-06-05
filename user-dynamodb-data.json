@@ -1,0 +1,24 @@
+{
+    "Items": [
+        {
+            "createdAt": {
+                "S": "2025-06-05T01:20:03.549Z"
+            },
+            "sk": {
+                "S": "METADATA"
+            },
+            "pk": {
+                "S": "USER#7755277e-31db-40da-bd60-7a4def1d4422"
+            },
+            "email": {
+                "S": "test-fixed-v2@example.com"
+            },
+            "name": {
+                "S": "Test Fixed User V2"
+            }
+        }
+    ],
+    "Count": 1,
+    "ScannedCount": 2,
+    "ConsumedCapacity": null
+}

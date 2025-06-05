@@ -1,0 +1,18 @@
+{
+    "Items": [
+        {
+            "AuthorizerId": "4enp60",
+            "AuthorizerType": "JWT",
+            "IdentitySource": [
+                "$request.header.Authorization"
+            ],
+            "JwtConfiguration": {
+                "Audience": [
+                    "5nb3tqr0d5svov99n4vtc3haic"
+                ],
+                "Issuer": "https://cognito-idp.ap-northeast-1.amazonaws.com/ap-northeast-1_oH53sFvDv"
+            },
+            "Name": "lpnavigator-authorizer-v3"
+        }
+    ]
+}

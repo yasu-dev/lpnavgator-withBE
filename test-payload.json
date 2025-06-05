@@ -1,0 +1,7 @@
+{
+  "httpMethod": "POST",
+  "body": "{\"email\":\"test-fixed-v2@example.com\",\"password\":\"TestPass123\"}",
+  "headers": {
+    "Content-Type": "application/json"
+  }
+}

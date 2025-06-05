@@ -1,0 +1,163 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Serverless Backend for Mock Frontend
+
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 512
+    Runtime: nodejs18.x
+    Environment:
+      Variables:
+        REGION: !Ref AWS::Region
+
+Resources:
+  # DynamoDB Table
+  UserTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub UserTable-${AWS::StackName}
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+    DeletionPolicy: Delete
+
+  # Cognito User Pool
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub MyAppUserPool-${AWS::StackName}
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireUppercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+
+  # Cognito User Pool Client
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub MyAppClient-${AWS::StackName}
+      UserPoolId: !Ref CognitoUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+
+  # Lambda Functions
+  CreateUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub CreateUserFunction-${AWS::StackName}
+      CodeUri: ./
+      Handler: src/handlers/createUser.handler
+      Events:
+        CreateUserApi:
+          Type: Api
+          Properties:
+            Path: /v1/users/signup
+            Method: post
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref CognitoUserPool
+          USER_POOL_CLIENT_ID: !Ref CognitoUserPoolClient
+          USER_TABLE_NAME: !Ref UserTable
+          REGION: !Ref AWS::Region
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserTable
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminCreateUser
+                - cognito-idp:AdminSetUserPassword
+                - cognito-idp:SignUp
+                - cognito-idp:AdminConfirmSignUp
+              Resource: !GetAtt CognitoUserPool.Arn
+
+  LoginFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub LoginFunction-${AWS::StackName}
+      CodeUri: ./
+      Handler: src/handlers/login.handler
+      Events:
+        LoginApi:
+          Type: Api
+          Properties:
+            Path: /v1/users/login
+            Method: post
+      Environment:
+        Variables:
+          USER_POOL_CLIENT_ID: !Ref CognitoUserPoolClient
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:InitiateAuth
+                - cognito-idp:AdminInitiateAuth
+              Resource: !GetAtt CognitoUserPool.Arn
+
+  GetUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub GetUserFunction-${AWS::StackName}
+      CodeUri: ./
+      Handler: src/handlers/getUser.handler
+      Events:
+        GetUserApi:
+          Type: Api
+          Properties:
+            Path: /v1/users/{userId}
+            Method: get
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref CognitoUserPool
+          USER_TABLE_NAME: !Ref UserTable
+          REGION: !Ref AWS::Region
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref UserTable
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:GetUser
+                - cognito-idp:AdminGetUser
+              Resource: !GetAtt CognitoUserPool.Arn
+
+Outputs:
+  ApiUrl:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+
+  CognitoUserPoolId:
+    Description: "Cognito User Pool ID"
+    Value: !Ref CognitoUserPool
+
+  CognitoUserPoolClientId:
+    Description: "Cognito User Pool Client ID"
+    Value: !Ref CognitoUserPoolClient
+
+  UserTableName:
+    Description: "DynamoDB User Table Name"
+    Value: !Ref UserTable 

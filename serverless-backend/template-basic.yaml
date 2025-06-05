@@ -1,0 +1,108 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Basic Resources for Serverless Backend
+
+Resources:
+  # DynamoDB Table
+  UserTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub UserTable-${AWS::StackName}
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+
+  # Cognito User Pool
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub MyAppUserPool-${AWS::StackName}
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      PasswordPolicy:
+        MinimumLength: 8
+        RequireLowercase: true
+        RequireUppercase: true
+        RequireNumbers: true
+        RequireSymbols: false
+
+  # Cognito User Pool Client
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub MyAppClient-${AWS::StackName}
+      UserPoolId: !Ref CognitoUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+
+  # Lambda Execution Role
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource: !GetAtt UserTable.Arn
+        - PolicyName: CognitoAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cognito-idp:*
+                Resource: !GetAtt CognitoUserPool.Arn
+
+Outputs:
+  CognitoUserPoolId:
+    Description: "Cognito User Pool ID"
+    Value: !Ref CognitoUserPool
+    Export:
+      Name: !Sub "${AWS::StackName}-CognitoUserPoolId"
+
+  CognitoUserPoolClientId:
+    Description: "Cognito User Pool Client ID"
+    Value: !Ref CognitoUserPoolClient
+    Export:
+      Name: !Sub "${AWS::StackName}-CognitoUserPoolClientId"
+
+  UserTableName:
+    Description: "DynamoDB User Table Name"
+    Value: !Ref UserTable
+    Export:
+      Name: !Sub "${AWS::StackName}-UserTableName"
+
+  LambdaExecutionRoleArn:
+    Description: "Lambda Execution Role ARN"
+    Value: !GetAtt LambdaExecutionRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-LambdaExecutionRoleArn" 

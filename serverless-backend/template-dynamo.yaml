@@ -1,0 +1,27 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: DynamoDB Table for Serverless Backend
+
+Resources:
+  # DynamoDB Table
+  UserTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub UserTable-${AWS::StackName}
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+
+Outputs:
+  UserTableName:
+    Description: "DynamoDB User Table Name"
+    Value: !Ref UserTable
+    Export:
+      Name: !Sub "${AWS::StackName}-UserTableName" 

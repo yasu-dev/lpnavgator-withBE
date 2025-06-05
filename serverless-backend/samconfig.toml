@@ -1,0 +1,6 @@
+version = 0.1
+[default.deploy.parameters]
+guided = true
+stack_name = "serverless-backend"
+confirm_changeset = true
+capabilities = ["CAPABILITY_IAM"]
