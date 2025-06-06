@@ -1,0 +1,40 @@
+{
+  "name": "lpnavigator-v1",
+  "region": "ap-northeast-1",
+  "framework": "react",
+  "buildSpec": {
+    "version": 1,
+    "frontend": {
+      "phases": {
+        "preBuild": {
+          "commands": [
+            "npm ci"
+          ]
+        },
+        "build": {
+          "commands": [
+            "npm run build"
+          ]
+        }
+      },
+      "artifacts": {
+        "baseDirectory": "dist",
+        "files": [
+          "**/*"
+        ]
+      },
+      "cache": {
+        "paths": [
+          "node_modules/**/*"
+        ]
+      }
+    }
+  },
+  "environmentVariables": {
+    "VITE_API_BASE_URL": "https://7dm1erset7.execute-api.ap-northeast-1.amazonaws.com/prod",
+    "VITE_USER_POOL_ID": "ap-northeast-1_m1LkBYqEc",
+    "VITE_USER_POOL_CLIENT_ID": "7f5hft1ip7gp9kqdh58bidsc4r",
+    "VITE_REGION": "ap-northeast-1",
+    "VITE_USE_MOCK_DATA": "false"
+  }
+} 

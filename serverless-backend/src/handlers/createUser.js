@@ -7,13 +7,31 @@ const USER_POOL_CLIENT_ID = process.env.USER_POOL_CLIENT_ID;
 const USER_TABLE_NAME = process.env.USER_TABLE_NAME;
 const cognito = new AWS.CognitoIdentityServiceProvider();
 
+// CORS ヘッダーを定義
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Content-Type': 'application/json'
+};
+
 exports.handler = async (event) => {
+  // OPTIONS メソッドの処理
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: ''
+    };
+  }
+
   try {
     const body = JSON.parse(event.body);
     const { email, password, name } = body;
     if (!email || !password || !name) {
       return {
         statusCode: 400,
+        headers: corsHeaders,
         body: JSON.stringify({ message: 'email, password, name は必須です' })
       };
     }
@@ -41,6 +59,7 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 201,
+      headers: corsHeaders,
       body: JSON.stringify({
         message: 'ユーザー登録に成功しました',
         userId: userId
@@ -51,11 +70,13 @@ exports.handler = async (event) => {
     if (error.code === 'UsernameExistsException') {
       return {
         statusCode: 400,
+        headers: corsHeaders,
         body: JSON.stringify({ message: 'そのメールアドレスは既に登録されています' })
       };
     }
     return {
       statusCode: 500,
+      headers: corsHeaders,
       body: JSON.stringify({ message: 'サーバーエラーが発生しました' })
     };
   }

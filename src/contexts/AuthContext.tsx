@@ -76,70 +76,120 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('lp_navigator_demo_mode', 'true');
   }, []);
 
-  // Mock login function
+  // 実際のAWS APIを使用したログイン機能
   const login = async (email: string, password: string): Promise<void> => {
     setIsLoading(true);
     
-    // Simulate network request
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        const foundUser = MOCK_USERS.find(
-          (user) => user.email === email && user.password === password
-        );
+    try {
+      // 開発環境と本番環境でAPIのURLを切り替え
+      const API_BASE_URL = window.location.hostname === 'localhost' 
+        ? 'http://localhost:3001'
+        : 'https://7dm1erset7.execute-api.ap-northeast-1.amazonaws.com/prod';
         
-        if (foundUser) {
-          const { password, ...userWithoutPassword } = foundUser;
-          setCurrentUser(userWithoutPassword);
-          localStorage.setItem('lp_navigator_user', JSON.stringify(userWithoutPassword));
-          setIsLoading(false);
-          resolve();
-        } else {
-          setIsLoading(false);
-          reject(new Error('Invalid email or password'));
-        }
-      }, 1000);
-    });
+      const response = await fetch(`${API_BASE_URL}/v1/users/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'ログインに失敗しました');
+      }
+
+      const result = await response.json();
+      
+      // ログイン成功時、ユーザー情報を作成
+      const user = {
+        id: email, // 一時的にemailをIDとして使用
+        name: email.split('@')[0], // メールアドレスの@前部分を名前として使用
+        email,
+        role: 'user' as const
+      };
+      
+      // JWTトークンを保存
+      if (result.accessToken) {
+        localStorage.setItem('accessToken', result.accessToken);
+      }
+      if (result.idToken) {
+        localStorage.setItem('idToken', result.idToken);
+      }
+      if (result.refreshToken) {
+        localStorage.setItem('refreshToken', result.refreshToken);
+      }
+      
+      // ユーザー情報を保存
+      setCurrentUser(user);
+      localStorage.setItem('lp_navigator_user', JSON.stringify(user));
+      
+      setIsLoading(false);
+    } catch (error) {
+      setIsLoading(false);
+      throw error;
+    }
   };
 
-  // ユーザー登録機能
+  // ユーザー登録機能 - 実際のAWS APIに接続
   const register = async (name: string, email: string, password: string): Promise<void> => {
     setIsLoading(true);
     
-    // Simulate network request
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        // Check if email is already registered
-        const existingUser = MOCK_USERS.find(
-          (user) => user.email === email
-        );
+    try {
+      // 開発環境と本番環境でAPIのURLを切り替え
+      const API_BASE_URL = window.location.hostname === 'localhost' 
+        ? 'http://localhost:3001'
+        : 'https://7dm1erset7.execute-api.ap-northeast-1.amazonaws.com/prod';
         
-        if (existingUser) {
-          setIsLoading(false);
-          reject(new Error('このメールアドレスは既に登録されています。'));
-          return;
+      const response = await fetch(`${API_BASE_URL}/v1/users/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, name })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      // 登録成功時、自動的にログイン処理を行う
+      const loginResponse = await fetch(`${API_BASE_URL}/v1/users/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      
+      if (loginResponse.ok) {
+        const loginResult = await loginResponse.json();
+        // JWTトークンを保存
+        if (loginResult.accessToken) {
+          localStorage.setItem('accessToken', loginResult.accessToken);
         }
-        
-        // Create new user
-        const newUser = {
-          id: String(MOCK_USERS.length + 1),
-          name,
-          email,
-          password,
-          role: 'user' as const
-        };
-        
-        // In a real app, this would be an API call to register the user
-        MOCK_USERS.push(newUser);
-        
-        // Log in the new user
-        const { password: _, ...userWithoutPassword } = newUser;
-        setCurrentUser(userWithoutPassword);
-        localStorage.setItem('lp_navigator_user', JSON.stringify(userWithoutPassword));
-        
-        setIsLoading(false);
-        resolve();
-      }, 1000);
-    });
+        if (loginResult.idToken) {
+          localStorage.setItem('idToken', loginResult.idToken);
+        }
+        if (loginResult.refreshToken) {
+          localStorage.setItem('refreshToken', loginResult.refreshToken);
+        }
+      }
+      
+      // ユーザー情報を作成
+      const newUser = {
+        id: result.userId || String(Date.now()),
+        name,
+        email,
+        role: 'user' as const
+      };
+      
+      // ユーザー情報を保存
+      setCurrentUser(newUser);
+      localStorage.setItem('lp_navigator_user', JSON.stringify(newUser));
+      
+      setIsLoading(false);
+    } catch (error) {
+      setIsLoading(false);
+      throw error;
+    }
   };
   
   // パスワードリセット機能

@@ -1,6 +1,8 @@
 // API Service Layer
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || 'https://7dm1erset7.execute-api.ap-northeast-1.amazonaws.com/prod';
-const USE_MOCK_DATA = (import.meta.env.VITE_USE_MOCK_DATA as string) === 'true' || true; // デフォルトでモックデータを使用
+const API_BASE_URL = window.location.hostname === 'localhost' 
+  ? 'http://localhost:3001'
+  : ((import.meta.env.VITE_API_BASE_URL as string) || 'https://7dm1erset7.execute-api.ap-northeast-1.amazonaws.com/prod');
+const USE_MOCK_DATA = false; // 実際のAWSバックエンドに接続
 
 // Types
 export interface User {
@@ -103,7 +105,18 @@ export const authApi = {
       body: JSON.stringify(credentials)
     });
 
-    return handleApiResponse(response);
+    const result = await handleApiResponse(response);
+    
+    // 実際のAPIレスポンスから期待するフォーマットに変換
+    return {
+      accessToken: result.accessToken || result.idToken,
+      refreshToken: result.refreshToken,
+      user: {
+        id: credentials.email, // 一時的にemailをIDとして使用
+        email: credentials.email,
+        name: credentials.email.split('@')[0] // メールアドレスの@前部分を名前として使用
+      }
+    };
   },
 
   async signup(userData: SignupRequest): Promise<AuthResponse> {
@@ -126,7 +139,30 @@ export const authApi = {
       body: JSON.stringify(userData)
     });
 
-    return handleApiResponse(response);
+    const result = await handleApiResponse(response);
+    
+    // 実際のAPIレスポンスから期待するフォーマットに変換
+    // signup成功後、自動的にloginを実行してトークンを取得
+    const loginResponse = await fetch(`${API_BASE_URL}/v1/users/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: userData.email,
+        password: userData.password
+      })
+    });
+    
+    const loginResult = await handleApiResponse(loginResponse);
+    
+    return {
+      accessToken: loginResult.accessToken || loginResult.idToken,
+      refreshToken: loginResult.refreshToken,
+      user: {
+        id: result.userId || userData.email,
+        email: userData.email,
+        name: userData.name
+      }
+    };
   },
 
   logout() {
